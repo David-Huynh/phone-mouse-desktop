@@ -1,5 +1,6 @@
 package com.dhuynh;
 
+// Singleton of LinkedBlockingQueue to store data from web socket
 public class SocketQueue<E> extends java.util.concurrent.LinkedBlockingQueue<E> {
     private static final SocketQueue<?> queueInstance = new SocketQueue<>();
     

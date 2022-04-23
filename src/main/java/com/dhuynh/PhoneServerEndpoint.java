@@ -22,11 +22,10 @@ public class PhoneServerEndpoint {
     public String onMessage(String message, Session session) {
         System.out.println("--- Message: " + message);	
         BlockingQueue<Integer[]> queue = (BlockingQueue<Integer[]>) SocketQueue.getInstance();
-        Integer[] arr = new Integer[3];
+        Integer[] arr = new Integer[2];
         arr[0] = Integer.parseInt(message.split(",")[0]);
         arr[1] = Integer.parseInt(message.split(",")[1]);
-        arr[2] = Integer.parseInt(message.split(",")[2]);
-        
+
         queue.offer(arr);
         return message;
     }
