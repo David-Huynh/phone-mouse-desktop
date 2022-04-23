@@ -1,8 +1,10 @@
 package com.dhuynh;
 
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
@@ -11,22 +13,34 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.BlockingQueue;
 
-import org.glassfish.tyrus.server.Server;
+
 import java.awt.Robot;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.event.InputEvent;
+
+import javax.jmdns.JmDNS;
+import javax.jmdns.ServiceInfo;
+
+import org.glassfish.tyrus.server.Server;
+
 
 /**
  * JavaFX App that displays a simple GUI with a button and a text field to update
  * sensitivity of the artificial mouse.
  */
 public class App extends Application {
-    private static Robot robot = null;
+    
     private static Scene scene;
+    
+    private static Thread serviceThread;
+
     private static Thread robotThread;
+    private static Robot robot = null;
 
     // Default Sensitivity Values for X and Y
     private static int xSensitivity = 10;
@@ -42,6 +56,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+
         VBox mainContainer = new VBox();
 
         // Create a text field for the user to enter sensitivity values
@@ -66,15 +81,63 @@ public class App extends Application {
         sensitivityBox.setAlignment( Pos.CENTER );
         sensitivityBox.setPadding( new Insets(40) );
 
-    
+        // Creates a button to register the service with JmDNS for zeroConf
+        HBox serviceBox = new HBox();
+        TextField serviceText = new TextField();
+        serviceText.setPromptText("Service Registration Status");
+        serviceText.setEditable(false);
+        serviceText.setPrefWidth(200);
+        Button registerServiceButton = new Button("Register Service");
+        serviceThread = new Thread (new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    JmDNS jmdns = JmDNS.create(InetAddress.getLocalHost());
+                    ServiceInfo serviceInfo = ServiceInfo.create("_http._tcp.local.", "PhoneServer", 8025, "path=/websockets");
+                    jmdns.registerService(serviceInfo);
+                    serviceText.setText("Service Registered: " + InetAddress.getLocalHost().getHostAddress() + ":8025");
+                    // Wait a bit
+                    Thread.sleep(25000);
+                    // Unregister all services
+                    jmdns.unregisterAllServices();
+                    serviceText.setText("Service: unregistered");
+                } catch (UnknownHostException e) {
+                    System.err.println("Unknown Host");
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    System.err.println("IO Exception");
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    System.err.println("Interrupted Exception");
+                    e.printStackTrace();
+                }
+            }
+        });
+        registerServiceButton.setOnAction( e -> {
+            serviceThread.start();
+        });
+
+        serviceBox.getChildren().addAll(serviceText, registerServiceButton);
+        serviceBox.setSpacing( 10.0d );
+        serviceBox.setAlignment( Pos.CENTER );
+        serviceBox.setPadding( new Insets(40) );
+
+
         // Add HBox to VBox
-        mainContainer.getChildren().addAll(sensitivityBox);
+        mainContainer.getChildren().addAll(sensitivityBox, serviceBox);
         
         scene = new Scene(mainContainer, 640, 480);
         stage.setScene(scene);
         stage.show();
     }
+    static void setRoot(String fxml) throws IOException {
+        scene.setRoot(loadFXML(fxml));
+    }
 
+    private static Parent loadFXML(String fxml) throws IOException {
+        FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource(fxml + ".fxml"));
+        return fxmlLoader.load();
+    }
     public static void main(String[] args) {
         BlockingQueue<Integer[]> queue = (BlockingQueue<Integer[]>) SocketQueue.getInstance();
 
