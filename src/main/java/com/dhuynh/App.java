@@ -88,6 +88,7 @@ public class App extends Application {
         serviceText.setEditable(false);
         serviceText.setPrefWidth(200);
         Button registerServiceButton = new Button("Register Service");
+        // BUG: Hangs on exit if button is pressed
         serviceThread = new Thread (new Runnable() {
             @Override
             public void run() {
