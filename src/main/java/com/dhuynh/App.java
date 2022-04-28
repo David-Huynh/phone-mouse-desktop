@@ -36,8 +36,6 @@ import org.glassfish.tyrus.server.Server;
 public class App extends Application {
     
     private static Scene scene;
-    
-    private static Thread serviceThread;
 
     private static Thread robotThread;
     private static Robot robot = null;
@@ -53,6 +51,8 @@ public class App extends Application {
         }
         return testSensitivity;
     }
+
+    static JmDNS jmdns = null;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -89,33 +89,20 @@ public class App extends Application {
         serviceText.setPrefWidth(200);
         Button registerServiceButton = new Button("Register Service");
         // BUG: Hangs on exit if button is pressed
-        serviceThread = new Thread (new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    JmDNS jmdns = JmDNS.create(InetAddress.getLocalHost());
-                    ServiceInfo serviceInfo = ServiceInfo.create("_http._tcp.local.", "PhoneServer", 8025, "path=/websockets");
-                    jmdns.registerService(serviceInfo);
-                    serviceText.setText("Service Registered: " + InetAddress.getLocalHost().getHostAddress() + ":8025");
-                    // Wait a bit
-                    Thread.sleep(25000);
-                    // Unregister all services
-                    jmdns.unregisterAllServices();
-                    serviceText.setText("Service: unregistered");
-                } catch (UnknownHostException e) {
-                    System.err.println("Unknown Host");
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    System.err.println("IO Exception");
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    System.err.println("Interrupted Exception");
-                    e.printStackTrace();
-                }
+
+        registerServiceButton.setOnAction( evt -> {
+            try {
+                jmdns = JmDNS.create(InetAddress.getLocalHost());
+                ServiceInfo serviceInfo = ServiceInfo.create("_http._tcp.local.", "PhoneServer", 8025, "path=/websockets");
+                jmdns.registerService(serviceInfo);
+                serviceText.setText("Service Registered: " + InetAddress.getLocalHost().getHostAddress() + ":8025");
+            } catch (UnknownHostException e) {
+                System.err.println("Unknown Host");
+                e.printStackTrace();
+            } catch (IOException e) {
+                System.err.println("IO Exception");
+                e.printStackTrace();
             }
-        });
-        registerServiceButton.setOnAction( e -> {
-            serviceThread.start();
         });
 
         serviceBox.getChildren().addAll(serviceText, registerServiceButton);
@@ -142,7 +129,7 @@ public class App extends Application {
     public static void main(String[] args) {
         BlockingQueue<Integer[]> queue = (BlockingQueue<Integer[]>) SocketQueue.getInstance();
 
-        Server server = new Server ("localhost", 8025, "/websockets", null, PhoneServerEndpoint.class);
+        Server server = new Server ("0.0.0.0", 8025, "/websockets", null, PhoneServerEndpoint.class);
 
         try {
             server.start();
@@ -189,6 +176,7 @@ public class App extends Application {
             // Stop robot thread and server
             server.stop();
             robotThread.interrupt();
+            jmdns.unregisterAllServices();
         }
     }
 }
