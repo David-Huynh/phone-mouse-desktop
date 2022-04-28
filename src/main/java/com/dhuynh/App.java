@@ -116,6 +116,7 @@ public class App extends Application {
         
         scene = new Scene(mainContainer, 640, 480);
         stage.setScene(scene);
+        stage.setTitle("GyroAim Desktop App");
         stage.show();
     }
     static void setRoot(String fxml) throws IOException {
